@@ -1,0 +1,13 @@
+language: scala
+scala:
+- 2.11.7
+jdk:
+- oraclejdk8
+sudo: false
+script:
+- sbt clean coverage test
+after_success:
+- sbt coveralls
+env:
+  global:
+    secure: mviF6kJ7vaiKllgupxLJITqfZewVTQPnXDH65gk4WemztmiioaJFB8WtMSAPwwVYvUmR2qr3oepp8n8lVriTupApFXfmJZzdAh3xHkE7HbvGRmBwGx7mnWq6mRejjeYgqomFR/QfwfSgHLr0DttNLSxDvgLJzBAoqAn6Sw3BIa1MuUD60p2RrcE3NtZ52gJWJOi/qdBa+3tUwXn2xI+j7wtFuOKl3k/c2IcraDiXw44bJuc/QNgFGydYKxjfr1hMafoM198w6NuszHfnSF5FWCQG1ZsR7PMNyBKD6ZpHehKR8HjBWlz/umUEYCePBcEb4YW32aMXfroSrwyL/vKQlxRIGavM/stQ67BdwfHx7b07QY8+6N2l4qCWnQRFX6q2Z9P3W7yH45x7WbgmkGEispsWSvUyBEXMcFlNK0gwdOe53TJBXdmDdrflaAntMwnE3DxompVxnxWrtB//K23t9t33azDcEidlBps4MfX+3tmezl3gi+zqk5S+EdZpMlgH6RrY2h24ExDL4RvDtfWMUhlpqJVLUd6xYK7tUj1HGTgdIhWl6Pau/2Agfw7O4P1chHtkOdMRkArsoUee7sRp5ZIW1k7KNbYEIegTH9TKPP6MKlXiWtLo+bcebKUrEND3JM2ZkvV1sfJfaZCSwA1YRGTtF8cWs0V4ufpVyDYEYHw=
