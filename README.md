@@ -43,7 +43,7 @@ which issues a DB query.
 
 ```scala
 implicit class CarRelation(val car: Car) extends AnyVal {
-  def toEngine: Option[Engine] = EngineRepository.findByCarId(car.id
+  def toEngine: Option[Engine] = EngineRepository.findByCarId(car.id)
 }
 
 val db = ...
@@ -93,7 +93,7 @@ Ideally, it would be nice if the last expression executes a single
 
 ```scala
 val engines: Seq[Engine] = cars.map(_.toEngine).flatten
-// SELECT * FROM engine WHERE car_id IN = (1, 2, 3, ...)
+// SELECT * FROM engine WHERE car_id IN (1, 2, 3, ...)
 ```
 
 Is this possible?  In Scala, yes, it is.
