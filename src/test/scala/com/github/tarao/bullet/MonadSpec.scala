@@ -548,11 +548,13 @@ class MonadSpec extends FunSpec with Matchers
         Monad.SingleValue(e)
       })
       assertTypeError("val engines: Seq[Engine] = ms1")
+      assertTypeError("val engines = ms1.run")
 
       val ms2 = Seq(ResolveEngine(Car(3L, "foo")).map { e =>
         Monad.SingleValue(e)
       })
       assertTypeError("val engines: Seq[Engine] = ms2")
+      assertTypeError("val engines = ms2.run")
     }
 
     it("should reject invalid monad type") {

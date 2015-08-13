@@ -194,21 +194,26 @@ object Monad {
 
   /** A type tag to forbid implicit conversion on a list of monads.
     *
-    * It forbids an implicit conversion from
-    * `Seq[Monad[SingleValue[T]]]` to `Seq[T]`.  This is useful when
-    * you provide no `Resolve.run` which resolves multiple values all
-    * together but provide one which resolves each element separately
-    * (via `Seq.map` for example) and want to prevent users from
-    * expecting that they can be resolved at once.
+    * It forbids an conversion from `Seq[Monad[SingleValue[T]]]` to
+    * `Seq[T]`.  This is useful when you provide no `Resolve.run`
+    * which resolves multiple values all together but provide one
+    * which resolves each element separately (via `Seq.map` for
+    * example) and want to prevent users from expecting that they can
+    * be resolved at once.
     */
   case class SingleValue[T](value: T) extends AnyVal
   object SingleValue {
     // $COVERAGE-OFF$
-    implicit def runToSingleValueIsForbidden[R, M](m: Seq[M])(implicit
+    implicit def runToSingleValueIsProhibited[R, M](m: Seq[M])(implicit
       guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[R]],
       check: IsConcreteType[M]
     ): Seq[SingleValue[R]] = sys.error("unexpected")
+    implicit def runnableOfSingleValueIsProhibited[R, M, S](ms: S)(implicit
+      seq: S => Seq[M],
+      monad: M <:< Monad[R],
+      check: IsConcreteType[M]
+    ): Runnable[R, M, S] = sys.error("unexpected")
     // $COVERAGE-ON$
 
     implicit def run[R, M](m: M)(implicit
