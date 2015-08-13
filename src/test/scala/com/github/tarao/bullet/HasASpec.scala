@@ -5,6 +5,7 @@ import org.scalatest.{FunSpec, Matchers, OptionValues, Inside, Inspectors}
 
 class HasASpec extends FunSpec with Matchers
     with OptionValues with Inside with Inspectors {
+  import Implicits._
   import Example._
 
   describe("HasA") {
@@ -29,15 +30,15 @@ class HasASpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        val engine1 = Monad.run(car.toEngine)
+        val engine1 = car.toEngine.run
         engine1 shouldBe Some(Engine(1001L, 3L))
 
-        val engine2 = Monad.run(for {
+        val engine2 = (for {
           engine <- car.toEngine
         } yield {
           engine shouldBe Engine(1001L, 3L)
           engine
-        })
+        }).run
         engine1 shouldBe Some(Engine(1001L, 3L))
       }
     }
@@ -67,20 +68,20 @@ class HasASpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        val engine1 = Monad.run(car.toEngine)
-        val crankshaft1 = engine1.flatMap { e => Monad.run(e.toCrankshaft) }
+        val engine1 = car.toEngine.run
+        val crankshaft1 = engine1.flatMap { e => e.toCrankshaft.run }
         crankshaft1 shouldBe Some(Crankshaft(1001L))
 
-        val crankshaft2 = Monad.run(car.toEngine.flatMap(_.toCrankshaft))
+        val crankshaft2 = car.toEngine.flatMap(_.toCrankshaft).run
         crankshaft2 shouldBe Some(Crankshaft(1001L))
 
-        val crankshaft3 = Monad.run(for {
+        val crankshaft3 = (for {
           engine <- car.toEngine
           crankshaft <- engine.toCrankshaft
         } yield {
           crankshaft shouldBe Crankshaft(1001L)
           crankshaft
-        })
+        }).run
         crankshaft3 shouldBe Some(Crankshaft(1001L))
       }
     }
@@ -117,18 +118,18 @@ class HasASpec extends FunSpec with Matchers
 
       // // by explicit run
       locally {
-        var engines1 = Monad.run(cars.map(_.toEngine))
+        var engines1 = cars.map(_.toEngine).run
         engines1 should contain only (
           Engine(1001L, 3L),
           Engine(1003L, 5L)
         )
 
-        val engines2 = Monad.run(cars.map { car => for {
+        val engines2 = cars.map { car => for {
           engine <- car.toEngine
         } yield {
           engine shouldBe map(engine.id)
           engine
-        } })
+        } }.run
         engines2 should contain only (
           Engine(1001L, 3L),
           Engine(1003L, 5L)
@@ -165,20 +166,20 @@ class HasASpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        var engines1 = Monad.run(cars.map(_.toEngine))
-        var crankshafts1 = Monad.run(engines1.map(_.toCrankshaft))
+        var engines1 = cars.map(_.toEngine).run
+        var crankshafts1 = engines1.map(_.toCrankshaft).run
         crankshafts1 should contain only (
           Crankshaft(1001L),
           Crankshaft(1003L)
         )
 
-        val crankshafts2 = Monad.run(cars.map { car => for {
+        val crankshafts2 = cars.map { car => for {
           engine <- car.toEngine
           crankshaft <- engine.toCrankshaft
         } yield {
           crankshaft shouldBe Crankshaft(engine.id)
           crankshaft
-        } })
+        } }.run
         crankshafts2 should contain only (
           Crankshaft(1001L),
           Crankshaft(1003L)

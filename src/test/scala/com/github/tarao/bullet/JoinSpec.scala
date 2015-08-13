@@ -5,6 +5,7 @@ import org.scalatest.{FunSpec, Matchers, OptionValues, Inside, Inspectors}
 
 class JoinSpec extends FunSpec with Matchers
     with OptionValues with Inside with Inspectors {
+  import Implicits._
   import Example._
 
   describe("Join") {
@@ -29,15 +30,15 @@ class JoinSpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        val car1 = Monad.run(car.withEngine)
+        val car1 = car.withEngine.run
         car1 shouldBe Some((Car(3L, "foo"), Engine(1001L, 3L)))
 
-        val car2 = Monad.run(for {
+        val car2 = (for {
           car <- car.withEngine
         } yield {
           car shouldBe (Car(3L, "foo"), Engine(1001L, 3L))
           car
-        })
+        }).run
         car2 shouldBe Some((Car(3L, "foo"), Engine(1001L, 3L)))
       }
     }
@@ -73,20 +74,20 @@ class JoinSpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        val car1 = Monad.run(car.withEngine)
-        val car2 = car1.flatMap { car => Monad.run(car.withWheels) }
+        val car1 = car.withEngine.run
+        val car2 = car1.flatMap { car => car.withWheels.run }
         car2 shouldBe Some((Car(3L, "foo"), Engine(1001L, 3L), wheels(3L)))
 
-        val car3 = Monad.run(car.withEngine.flatMap(_.withWheels))
+        val car3 = car.withEngine.flatMap(_.withWheels).run
         car3 shouldBe Some((Car(3L, "foo"), Engine(1001L, 3L), wheels(3L)))
 
-        val car4 = Monad.run(for {
+        val car4 = (for {
           car <- car.withEngine
           car <- car.withWheels
         } yield {
           car shouldBe (Car(3L, "foo"), Engine(1001L, 3L), wheels(3L))
           car
-        })
+        }).run
         car4 shouldBe Some((Car(3L, "foo"), Engine(1001L, 3L), wheels(3L)))
       }
     }
@@ -123,18 +124,18 @@ class JoinSpec extends FunSpec with Matchers
 
       // // by explicit run
       locally {
-        var cars1 = Monad.run(cars.map(_.withEngine))
+        var cars1 = cars.map(_.withEngine).run
         cars1 should contain only (
           (Car(3L, "foo"), Engine(1001L, 3L)),
           (Car(5L, "baz"), Engine(1003L, 5L))
         )
 
-        val cars2 = Monad.run(cars.map { car => for {
+        val cars2 = cars.map { car => for {
           car <- car.withEngine
         } yield {
           car._2 shouldBe map(car._2.id)
           car
-        } })
+        } }.run
         cars2 should contain only (
           (Car(3L, "foo"), Engine(1001L, 3L)),
           (Car(5L, "baz"), Engine(1003L, 5L))
@@ -180,16 +181,16 @@ class JoinSpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        var cars1 = Monad.run(cars.map(_.withEngine))
-        var cars2 = Monad.run(cars1.map(_.withWheels))
+        var cars1 = cars.map(_.withEngine).run
+        var cars2 = cars1.map(_.withWheels).run
         cars2 should contain only (filtered.map { car =>
           (car, engines(car.id), wheels(car.id))
         }: _*)
 
-        val cars3 = Monad.run(cars.map { car => for {
+        val cars3 = cars.map { car => for {
           car <- car.withEngine
           car <- car.withWheels
-        } yield(car) })
+        } yield(car) }.run
         cars3 should contain only (filtered.map { car =>
           (car, engines(car.id), wheels(car.id))
         }: _*)
@@ -226,15 +227,15 @@ class JoinSpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        val car1 = Monad.run(car.withEngine)
+        val car1 = car.withEngine.run
         car1 shouldBe Some((Car(2L, "bar"), Engine(0L, 0L)))
 
-        val car2 = Monad.run(for {
+        val car2 = (for {
           car <- car.withEngine
         } yield {
           car shouldBe (Car(2L, "bar"), Engine(0L, 0L))
           car
-        })
+        }).run
         car2 shouldBe Some((Car(2L, "bar"), Engine(0L, 0L)))
       }
     }
@@ -270,20 +271,20 @@ class JoinSpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        val car1 = Monad.run(car.withEngine)
-        val car2 = car1.flatMap { car => Monad.run(car.withWheels) }
+        val car1 = car.withEngine.run
+        val car2 = car1.flatMap { car => car.withWheels.run }
         car2 shouldBe Some((Car(2L, "bar"), Engine(0L, 0L), wheels(2L)))
 
-        val car3 = Monad.run(car.withEngine.flatMap(_.withWheels))
+        val car3 = car.withEngine.flatMap(_.withWheels).run
         car3 shouldBe Some((Car(2L, "bar"), Engine(0L, 0L), wheels(2L)))
 
-        val car4 = Monad.run(for {
+        val car4 = (for {
           car <- car.withEngine
           car <- car.withWheels
         } yield {
           car shouldBe (Car(2L, "bar"), Engine(0L, 0L), wheels(2L))
           car
-        })
+        }).run
         car4 shouldBe Some((Car(2L, "bar"), Engine(0L, 0L), wheels(2L)))
       }
     }
@@ -323,19 +324,19 @@ class JoinSpec extends FunSpec with Matchers
 
       // // by explicit run
       locally {
-        var cars1 = Monad.run(cars.map(_.withEngine))
+        var cars1 = cars.map(_.withEngine).run
         cars1 should contain only (
           (Car(3L, "foo"), Engine(1001L, 3L)),
           (Car(2L, "bar"), Engine(0L, 0L)),
           (Car(5L, "baz"), Engine(1003L, 5L))
         )
 
-        val cars2 = Monad.run(cars.map { car => for {
+        val cars2 = cars.map { car => for {
           car <- car.withEngine
         } yield {
           car._2 shouldBe map(car._2.id)
           car
-        } })
+        } }.run
         cars2 should contain only (
           (Car(3L, "foo"), Engine(1001L, 3L)),
           (Car(2L, "bar"), Engine(0L, 0L)),
@@ -380,16 +381,16 @@ class JoinSpec extends FunSpec with Matchers
 
       // by explicit run
       locally {
-        var cars1 = Monad.run(cars.map(_.withEngine))
-        var cars2 = Monad.run(cars1.map(_.withWheels))
+        var cars1 = cars.map(_.withEngine).run
+        var cars2 = cars1.map(_.withWheels).run
         cars2 should contain only (filtered.map { car =>
           (car, engines(car.id), wheels(car.id))
         }: _*)
 
-        val cars3 = Monad.run(cars.map { car => for {
+        val cars3 = cars.map { car => for {
           car <- car.withEngine
           car <- car.withWheels
-        } yield(car) })
+        } yield(car) }.run
         cars3 should contain only (filtered.map { car =>
           (car, engines(car.id), wheels(car.id))
         }: _*)

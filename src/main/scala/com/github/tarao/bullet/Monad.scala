@@ -7,7 +7,10 @@ package bullet
   * of a resolved object.  A list of monads can implicitly be
   * converted into a list of resolved objects.
   */
-sealed trait Monad[R] { def diverge(): Monad.Divergent[R] }
+sealed trait Monad[R] {
+  def run(): Option[R]
+  def runWithDefault(default: R): R
+}
 object Monad {
   sealed abstract class Sig[R, Q, N, M](implicit
     monad1: M <:< Monad[Q],
@@ -24,12 +27,16 @@ object Monad {
       monad4: N <:< Monad[S],
       check4: IsConcreteType[N]
     ): Monad.FlatMapped[S, R, Sig[S, Q, N, M], This] = Monad.FlatMapped(f, this)
-    def diverge(): Divergent[R] = new Divergent({ Monad.run(this) })
+    def run(): Option[R] = {
+      implicit val guard: RunOnImplicitConversion = new RunOnImplicitConversion
+      Monad.run(this)
+    }
+    def runWithDefault(default: R): R = run.getOrElse(default)
   }
 
   /** A class to create a monad instance from an object of the result type. */
   case class Unit[R](value: R) extends Sig[R, Null, Null, Null] {
-    protected[bullet] def run(ms: Seq[Unit[R]]): Seq[R] = ms.map(_.value)
+    protected[Monad] def run(ms: Seq[Unit[R]]): Seq[R] = ms.map(_.value)
   }
 
   /** A class to define a resolution from source values to target values.
@@ -37,7 +44,7 @@ object Monad {
     * Override `run` to define a concrete resolution.
     */
   abstract case class Resolve[R, Q](value: Q) extends Sig[R, Q, Null, Null] {
-    protected[bullet] def run(ms: Seq[Resolve[R, Q]]): Seq[R]
+    protected[Monad] def run(ms: Seq[Resolve[R, Q]]): Seq[R]
   }
 
   case class FlatMapped[R, Q, N, M](
@@ -48,7 +55,7 @@ object Monad {
     monad2: N <:< Monad[R],
     check2: IsConcreteType[N]
   ) extends Sig[R, Q, N, M] {
-    protected[bullet] def run(ms: Seq[FlatMapped[R, Q, N, M]]): Seq[R] = {
+    protected[Monad] def run(ms: Seq[FlatMapped[R, Q, N, M]]): Seq[R] = {
       val fs = ms.map(_.f)
       val mapped = Internal.run(ms.map { m => monad1(m.m) })
       Internal.run((fs, mapped).zipped.map { (f, m) => monad2(f(m)) })
@@ -101,27 +108,53 @@ object Monad {
 
   import scala.language.implicitConversions
 
+  class RunOnImplicitConversion(val dummy: Int = 0) extends AnyVal
+
   implicit def run[R, M](ms: Seq[M])(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[R],
     check: IsConcreteType[M]
   ): Seq[R] = Internal.run(ms.asInstanceOf[Seq[Monad[R]]])
 
   implicit def run[R, M](m: M)(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[R],
     check: IsConcreteType[M]
   ): Option[R] = run(Seq(m)).headOption
 
   implicit def flatten[R, M, T](ms: Seq[M])(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[T],
     check: IsConcreteType[M],
     seq: T => Seq[R]
   ): Seq[R] = run(ms).flatten
 
   implicit def flatten[R, M, T](m: M)(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[T],
     check: IsConcreteType[M],
     seq: T => Seq[R]
   ): Seq[R] = run(Seq(m)).flatten
+
+  /** A type class to run `Monad[]`s all together */
+  implicit class Runnable[R, M, S](ms: S)(implicit
+    seq: S => Seq[M],
+    monad: M <:< Monad[R],
+    check: IsConcreteType[M]
+  ) {
+    def run(): Seq[R] = {
+      implicit val guard = new RunOnImplicitConversion
+      Monad.run(ms)
+    }
+  }
+
+  /** A type class to run each element of `Monad[]`s separately. */
+  class Divergent[R](val ms: Seq[Monad[R]]) extends AnyVal {
+    def run(): Seq[R] = ms.map(_.run).flatten
+  }
+  implicit class Divergeable[R, S](ms: S)(implicit seq: S => Seq[Monad[R]]) {
+    def diverge(): Divergent[R] = new Divergent(seq(ms))
+  }
 
   class Fallback[T] {
     def hasValue(): Boolean = false
@@ -153,60 +186,51 @@ object Monad {
   }
 
   implicit def runWithDefault[R, M](m: M)(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[R],
     check: IsConcreteType[M],
     unoption: Default[R]
   ): R = unoption(run(m))
 
-  /** A type class to run each element of `Monad[]`s separately. */
-  class Divergent[R](block: => Option[R]) { def run(): Option[R] = block }
-  object Divergent {
-    import scala.language.implicitConversions
-    implicit def fromSeq[R](ms: Seq[Monad[R]]): Seq[Divergent[R]] =
-      ms.map(_.diverge)
-    implicit def fromMonad[R](m: Monad[R]): Divergent[R] = m.diverge
-    def run[R](ds: Seq[Divergent[R]]): Seq[R] = ds.map(_.run).flatten
-    def run[R](d: Divergent[R]): Option[R] = d.run
-    def flatten[R, S](ds: Seq[Divergent[S]])(implicit
-      seq: S => Seq[R]
-    ): Seq[R] = run(ds).map(seq(_)).flatten
-    def flatten[R, S](d: Divergent[S])(implicit
-      seq: S => Seq[R]
-    ): Seq[R] = run(Seq(d)).map(seq(_)).flatten
-    def runWithDefault[R](d: Divergent[R])(implicit unoption: Default[R]): R =
-      unoption(run(d))
-  }
-
   /** A type tag to forbid implicit conversion on a list of monads.
     *
-    * It forbids an implicit conversion from
-    * `Seq[Monad[SingleValue[T]]]` to `Seq[T]`.  This is useful when
-    * you provide no `Resolve.run` which resolves multiple values all
-    * together but provide one which resolves each element separately
-    * (via `Seq.map` for example) and want to prevent users from
-    * expecting that they can be resolved at once.
+    * It forbids an conversion from `Seq[Monad[SingleValue[T]]]` to
+    * `Seq[T]`.  This is useful when you provide no `Resolve.run`
+    * which resolves multiple values all together but provide one
+    * which resolves each element separately (via `Seq.map` for
+    * example) and want to prevent users from expecting that they can
+    * be resolved at once.
     */
   case class SingleValue[T](value: T) extends AnyVal
   object SingleValue {
     // $COVERAGE-OFF$
-    implicit def runToSingleValueIsForbidden[R, M](m: Seq[M])(implicit
+    implicit def runToSingleValueIsProhibited[R, M](m: Seq[M])(implicit
+      guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[R]],
       check: IsConcreteType[M]
     ): Seq[SingleValue[R]] = sys.error("unexpected")
+    implicit def runnableOfSingleValueIsProhibited[R, M, S](ms: S)(implicit
+      seq: S => Seq[M],
+      monad: M <:< Monad[R],
+      check: IsConcreteType[M]
+    ): Runnable[R, M, S] = sys.error("unexpected")
     // $COVERAGE-ON$
 
     implicit def run[R, M](m: M)(implicit
+      guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[R]],
       check: IsConcreteType[M]
     ): Option[R] = Monad.run(m).map(_.value)
 
     implicit def flatten[R, M, T](m: M)(implicit
+      guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[T]],
       check: IsConcreteType[M],
       seq: T => Seq[R]
     ): Seq[R] = Monad.run(Seq(m)).map(_.value).flatten
 
     implicit def runWithDefault[R, M](m: M)(implicit
+      guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[R]],
       check: IsConcreteType[M],
       unoption: Default[R]
