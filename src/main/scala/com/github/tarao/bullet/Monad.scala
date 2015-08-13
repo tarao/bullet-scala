@@ -7,7 +7,10 @@ package bullet
   * of a resolved object.  A list of monads can implicitly be
   * converted into a list of resolved objects.
   */
-sealed trait Monad[R] { def diverge(): Monad.Divergent[R] }
+sealed trait Monad[R] {
+  def run(): Option[R]
+  def runWithDefault(default: R): R
+}
 object Monad {
   sealed abstract class Sig[R, Q, N, M](implicit
     monad1: M <:< Monad[Q],
@@ -24,10 +27,11 @@ object Monad {
       monad4: N <:< Monad[S],
       check4: IsConcreteType[N]
     ): Monad.FlatMapped[S, R, Sig[S, Q, N, M], This] = Monad.FlatMapped(f, this)
-    def diverge(): Divergent[R] = {
-      implicit val guard = new RunOnImplicitConversion
-      new Divergent({ Monad.run(this) })
+    def run(): Option[R] = {
+      implicit val guard: RunOnImplicitConversion = new RunOnImplicitConversion
+      Monad.run(this)
     }
+    def runWithDefault(default: R): R = run.getOrElse(default)
   }
 
   /** A class to create a monad instance from an object of the result type. */
@@ -132,6 +136,25 @@ object Monad {
     seq: T => Seq[R]
   ): Seq[R] = run(Seq(m)).flatten
 
+  /** A type class to run `Monad[]`s all together */
+  implicit class Runnable[R, M](ms: Seq[M])(implicit
+    monad: M <:< Monad[R],
+    check: IsConcreteType[M]
+  ) {
+    def run(): Seq[R] = {
+      implicit val guard = new RunOnImplicitConversion
+      Monad.run(ms)
+    }
+  }
+
+  /** A type class to run each element of `Monad[]`s separately. */
+  class Divergent[R](ms: Seq[Monad[R]]) {
+    def run(): Seq[R] = ms.map(_.run).flatten
+  }
+  implicit class Divergeable[R](ms: Seq[Monad[R]]) {
+    def diverge(): Divergent[R] = new Divergent(ms)
+  }
+
   class Fallback[T] {
     def hasValue(): Boolean = false
     def fallback(option: Option[T]): Option[T] = option
@@ -167,25 +190,6 @@ object Monad {
     check: IsConcreteType[M],
     unoption: Default[R]
   ): R = unoption(run(m))
-
-  /** A type class to run each element of `Monad[]`s separately. */
-  class Divergent[R](block: => Option[R]) { def run(): Option[R] = block }
-  object Divergent {
-    import scala.language.implicitConversions
-    implicit def fromSeq[R](ms: Seq[Monad[R]]): Seq[Divergent[R]] =
-      ms.map(_.diverge)
-    implicit def fromMonad[R](m: Monad[R]): Divergent[R] = m.diverge
-    def run[R](ds: Seq[Divergent[R]]): Seq[R] = ds.map(_.run).flatten
-    def run[R](d: Divergent[R]): Option[R] = d.run
-    def flatten[R, S](ds: Seq[Divergent[S]])(implicit
-      seq: S => Seq[R]
-    ): Seq[R] = run(ds).map(seq(_)).flatten
-    def flatten[R, S](d: Divergent[S])(implicit
-      seq: S => Seq[R]
-    ): Seq[R] = run(Seq(d)).map(seq(_)).flatten
-    def runWithDefault[R](d: Divergent[R])(implicit unoption: Default[R]): R =
-      unoption(run(d))
-  }
 
   /** A type tag to forbid implicit conversion on a list of monads.
     *
