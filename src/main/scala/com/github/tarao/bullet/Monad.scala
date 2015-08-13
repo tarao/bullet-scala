@@ -36,7 +36,7 @@ object Monad {
 
   /** A class to create a monad instance from an object of the result type. */
   case class Unit[R](value: R) extends Sig[R, Null, Null, Null] {
-    protected[bullet] def run(ms: Seq[Unit[R]]): Seq[R] = ms.map(_.value)
+    protected[Monad] def run(ms: Seq[Unit[R]]): Seq[R] = ms.map(_.value)
   }
 
   /** A class to define a resolution from source values to target values.
@@ -44,7 +44,7 @@ object Monad {
     * Override `run` to define a concrete resolution.
     */
   abstract case class Resolve[R, Q](value: Q) extends Sig[R, Q, Null, Null] {
-    protected[bullet] def run(ms: Seq[Resolve[R, Q]]): Seq[R]
+    protected[Monad] def run(ms: Seq[Resolve[R, Q]]): Seq[R]
   }
 
   case class FlatMapped[R, Q, N, M](
@@ -55,7 +55,7 @@ object Monad {
     monad2: N <:< Monad[R],
     check2: IsConcreteType[N]
   ) extends Sig[R, Q, N, M] {
-    protected[bullet] def run(ms: Seq[FlatMapped[R, Q, N, M]]): Seq[R] = {
+    protected[Monad] def run(ms: Seq[FlatMapped[R, Q, N, M]]): Seq[R] = {
       val fs = ms.map(_.f)
       val mapped = Internal.run(ms.map { m => monad1(m.m) })
       Internal.run((fs, mapped).zipped.map { (f, m) => monad2(f(m)) })
