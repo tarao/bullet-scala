@@ -20,6 +20,15 @@ lazy val bullet = (project in file(".")).
       "-feature"
     ),
 
+    // Documentation
+    scalacOptions in (Compile, doc) ++= Nil :::
+      "-groups" ::
+      "-sourcepath" ::
+      baseDirectory.value.getAbsolutePath ::
+      "-doc-source-url" ::
+      "https://github.com/tarao/bullet-scala/tree/master€{FILE_PATH}.scala" ::
+      Nil,
+
     // Publishing
     publishMavenStyle := true,
     publishTo := {
