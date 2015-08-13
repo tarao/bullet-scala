@@ -24,7 +24,10 @@ object Monad {
       monad4: N <:< Monad[S],
       check4: IsConcreteType[N]
     ): Monad.FlatMapped[S, R, Sig[S, Q, N, M], This] = Monad.FlatMapped(f, this)
-    def diverge(): Divergent[R] = new Divergent({ Monad.run(this) })
+    def diverge(): Divergent[R] = {
+      implicit val guard = new RunOnImplicitConversion
+      new Divergent({ Monad.run(this) })
+    }
   }
 
   /** A class to create a monad instance from an object of the result type. */
@@ -101,23 +104,29 @@ object Monad {
 
   import scala.language.implicitConversions
 
+  class RunOnImplicitConversion(val dummy: Int = 0) extends AnyVal
+
   implicit def run[R, M](ms: Seq[M])(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[R],
     check: IsConcreteType[M]
   ): Seq[R] = Internal.run(ms.asInstanceOf[Seq[Monad[R]]])
 
   implicit def run[R, M](m: M)(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[R],
     check: IsConcreteType[M]
   ): Option[R] = run(Seq(m)).headOption
 
   implicit def flatten[R, M, T](ms: Seq[M])(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[T],
     check: IsConcreteType[M],
     seq: T => Seq[R]
   ): Seq[R] = run(ms).flatten
 
   implicit def flatten[R, M, T](m: M)(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[T],
     check: IsConcreteType[M],
     seq: T => Seq[R]
@@ -153,6 +162,7 @@ object Monad {
   }
 
   implicit def runWithDefault[R, M](m: M)(implicit
+    guard: RunOnImplicitConversion,
     monad: M <:< Monad[R],
     check: IsConcreteType[M],
     unoption: Default[R]
@@ -190,23 +200,27 @@ object Monad {
   object SingleValue {
     // $COVERAGE-OFF$
     implicit def runToSingleValueIsForbidden[R, M](m: Seq[M])(implicit
+      guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[R]],
       check: IsConcreteType[M]
     ): Seq[SingleValue[R]] = sys.error("unexpected")
     // $COVERAGE-ON$
 
     implicit def run[R, M](m: M)(implicit
+      guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[R]],
       check: IsConcreteType[M]
     ): Option[R] = Monad.run(m).map(_.value)
 
     implicit def flatten[R, M, T](m: M)(implicit
+      guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[T]],
       check: IsConcreteType[M],
       seq: T => Seq[R]
     ): Seq[R] = Monad.run(Seq(m)).map(_.value).flatten
 
     implicit def runWithDefault[R, M](m: M)(implicit
+      guard: RunOnImplicitConversion,
       monad: M <:< Monad[SingleValue[R]],
       check: IsConcreteType[M],
       unoption: Default[R]

@@ -5,6 +5,7 @@ import org.scalatest.{FunSpec, Matchers, OptionValues, Inside, Inspectors}
 
 class MonadSpec extends FunSpec with Matchers
     with OptionValues with Inside with Inspectors {
+  import Implicits._
   import Example._
 
   describe("Monad") {
