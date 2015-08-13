@@ -116,9 +116,11 @@ val hasEngine: HasA[Car, Engine] = ...
 
 The usage of `toEngine` is quite the same except that (1) you have to
 write a type of return value (`Option[Engine]` or `Seq[Engine]` in
-this case), (2) you don't need to `flatten`.
+this case), (2) you don't need to `flatten` anymore.
 
 ```scala
+import com.github.tarao.bullet.Implicits._
+
 val car: Car = ...
 val engine: Option[Engine] = car.toEngine
 
@@ -320,11 +322,19 @@ occurs**.
 For `Join[]`, you should be careful that you have two choices of types
 to provide a default value, either `Result` or `Right` of
 `Join[Result, Key, Left, Right]`.  If you provide a default value for
-`Result`, then you will always get a value by `run()` on a
-single monad but still get some values lacked by `run()` on
-multiple monads.  You should provide a default value for `Right` to
-avoid this.  In this time, **the implicit value must be visible in the
-scope where the invoction of `Join.Monadic()` occurs**.
+`Result`, then you will always get a value by `run()` on a single
+monad but still get some values lacked by `run()` on multiple monads.
+You should provide a default value for `Right` to avoid this.  In this
+time, **the implicit value must be visible in the scope where the
+invoction of `Join.Monadic()` occurs**.
+
+## An implicit conversion vs. an explicit run
+
+You may think that resolving object relations on an implicit
+conversion is too aggressive.  There is a way not to allow implicit
+conversions and force explicit `run()`s instead.  Only you have to do
+is not to `import com.github.bullet.Implicits._`.  Other things will
+work fine without this.
 
 ## License <a name="license"></a>
 
