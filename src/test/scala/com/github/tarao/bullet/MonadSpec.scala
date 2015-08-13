@@ -23,7 +23,7 @@ class MonadSpec extends FunSpec with Matchers
         engines2 shouldBe Array(Engine(1001L, 3L))
 
         val ms3 = Array(Monad.Unit(Engine(1001L, 3L)))
-        val engines3: Seq[Engine] = Monad.run(ms3)
+        val engines3: Seq[Engine] = ms3.run
         engines3 shouldBe Array(Engine(1001L, 3L))
       }
 
@@ -55,7 +55,7 @@ class MonadSpec extends FunSpec with Matchers
           ResolveEngine(Car(2L, "bar")),
           ResolveEngine(Car(5L, "baz"))
         )
-        val engines3: Seq[Engine] = Monad.run(ms3)
+        val engines3: Seq[Engine] = ms3.run
         engines3 shouldBe Array(Engine(1003L, 3L), Engine(1005L, 5L))
       }
     }
@@ -591,16 +591,16 @@ class MonadSpec extends FunSpec with Matchers
       }
       val seq1: Seq[Monad[Crankshaft]] = Seq(m1, m2)
       assertTypeError("val r: Seq[Crankshaft] = seq1")
-      assertTypeError("val r: Seq[Crankshaft] = Monad.run(seq1)")
+      assertTypeError("val r: Seq[Crankshaft] = seq1.run")
       val seq2 = Seq(m1, m2)
       assertTypeError("val r: Seq[Crankshaft] = seq2")
-      assertTypeError("val r: Seq[Crankshaft] = Monad.run(seq2)")
+      assertTypeError("val r: Seq[Crankshaft] = seq2.run")
 
       val m3: Monad.FlatMapped[Crankshaft, Engine, Monad.Sig[Crankshaft, Null, Null, Null], _] = m1
       val m4:  Monad.FlatMapped[Crankshaft, Engine, Monad.Sig[Crankshaft, Null, Null, Null], _] = m2
       val seq3: Seq[ Monad.FlatMapped[Crankshaft, Engine, Monad.Sig[Crankshaft, Null, Null, Null], _]] = Seq(m3, m4)
       assertTypeError("val r: Seq[Crankshaft] = seq3")
-      assertTypeError("val r: Seq[Crankshaft] = Monad.run(seq3)")
+      assertTypeError("val r: Seq[Crankshaft] = seq3.run")
 
       val m5 = Monad.Unit(Car(3L, "foo")).flatMap { c =>
         Monad.Unit(Engine(0L, 0L))
@@ -608,13 +608,13 @@ class MonadSpec extends FunSpec with Matchers
       val m6 = Monad.Unit(Car(3L, "foo")).flatMap(ResolveEngine(_))
       val seq4 = Seq(m5, m6)
       assertTypeError("val r: Seq[Engine] = seq4")
-      assertTypeError("val r: Seq[Engine] = Monad.run(seq4)")
+      assertTypeError("val r: Seq[Engine] = seq4.run")
 
       val m7 = Monad.Unit(Car(3L, "foo")).flatMap { c => m5 }
       val m8 = Monad.Unit(Car(3L, "foo")).flatMap { c => m6 }
       val seq5 = Seq(m7, m8)
       assertTypeError("val r: Seq[Engine] = seq5")
-      assertTypeError("val r: Seq[Engine] = Monad.run(seq5)")
+      assertTypeError("val r: Seq[Engine] = seq5.run")
     }
 
     it("should satisfy monad laws") {
@@ -1103,7 +1103,7 @@ class MonadSpec extends FunSpec with Matchers
           CountedResolveEngine(Car(2L, "bar"), c),
           CountedResolveEngine(Car(5L, "baz"), c)
         )
-        val engines3: Seq[Engine] = Monad.run(ms3)
+        val engines3: Seq[Engine] = ms3.run
         engines3 shouldBe Array(Engine(1003L, 3L), Engine(1005L, 5L))
         c.count shouldBe 1
       }
@@ -1357,6 +1357,10 @@ class MonadSpec extends FunSpec with Matchers
         val ms2 = Array(Monad.Unit(Engine(1001L, 3L))).toSeq
         val engines2: Seq[Engine] = ms2.diverge.run
         engines2 shouldBe Array(Engine(1001L, 3L))
+
+        val ms3 = Array(Monad.Unit(Engine(1001L, 3L)))
+        val engines3: Seq[Engine] = ms3.diverge.run
+        engines3 shouldBe Array(Engine(1001L, 3L))
       }
 
       locally { // Resolve

@@ -137,7 +137,8 @@ object Monad {
   ): Seq[R] = run(Seq(m)).flatten
 
   /** A type class to run `Monad[]`s all together */
-  implicit class Runnable[R, M](ms: Seq[M])(implicit
+  implicit class Runnable[R, M, S](ms: S)(implicit
+    seq: S => Seq[M],
     monad: M <:< Monad[R],
     check: IsConcreteType[M]
   ) {
@@ -148,11 +149,11 @@ object Monad {
   }
 
   /** A type class to run each element of `Monad[]`s separately. */
-  class Divergent[R](ms: Seq[Monad[R]]) {
+  class Divergent[R](val ms: Seq[Monad[R]]) extends AnyVal {
     def run(): Seq[R] = ms.map(_.run).flatten
   }
-  implicit class Divergeable[R](ms: Seq[Monad[R]]) {
-    def diverge(): Divergent[R] = new Divergent(ms)
+  implicit class Divergeable[R, S](ms: S)(implicit seq: S => Seq[Monad[R]]) {
+    def diverge(): Divergent[R] = new Divergent(seq(ms))
   }
 
   class Fallback[T] {
