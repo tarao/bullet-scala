@@ -12,7 +12,7 @@ Add dependency in your `build.sbt` as the following.
 
 ```scala
     libraryDependencies ++= Seq(
-      "com.github.tarao" %% "bullet" % "0.0.1"
+      "com.github.tarao" %% "bullet" % "0.0.2"
     )
 ```
 

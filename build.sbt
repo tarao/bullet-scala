@@ -5,7 +5,7 @@ lazy val bullet = (project in file(".")).
   settings(
     name := "bullet",
     organization := "com.github.tarao",
-    version := "0.0.1",
+    version := "0.0.2",
     scalaVersion := "2.11.7",
 
     // Depenency
