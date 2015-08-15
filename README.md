@@ -128,7 +128,7 @@ val cars: Seq[Car] = ...
 val engines: Seq[Engine] = cars.map(_.toEngine)
 ```
 
-The implementation of `HasEngine` should resolve `Engine`s from `Car`s
+The implementation of `hasEngine` should resolve `Engine`s from `Car`s
 in a single query.  `HasA[Car, Engine]` has an interface for that
 named `map()`, whose type is `Seq[Car] => Seq[Engine]`.  Then the
 implementation whould be the following.
