@@ -163,8 +163,6 @@ In the last example, we receive a monad as a variable of type
 conversion.  If we make it explicit, the example looks like this.
 
 ```scala
-import com.github.tarao.bullet.Monad
-
 val car: Car = ...
 val engine: Option[Engine] = car.toEngine.run
 
